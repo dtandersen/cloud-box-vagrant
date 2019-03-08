@@ -5,7 +5,7 @@ Vagrant.configure(2) do |config|
   config.vm.box = "centos/7"
   config.vm.box_version = "1902.01"
   config.vm.hostname = "cloud-box"
-  config.vm.synced_folder ENV['USERPROFILE']  + "/Google Drive/vagrant-work/terraform", "/home/vagrant/work"
+  config.vm.synced_folder ENV['USERPROFILE']  + "/Google Drive/vagrant-work", "/home/vagrant/work"
 
   config.ssh.forward_agent = true
 
