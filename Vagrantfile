@@ -35,5 +35,7 @@ Vagrant.configure(2) do |config|
     # install aws cli
     yum install -y python-pip
     pip install awscli
+    yum install centos-release-scl
+    yum install rh-python36
   SHELL
 end
