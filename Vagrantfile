@@ -33,11 +33,8 @@ Vagrant.configure(2) do |config|
     usermod -aG docker vagrant
 
     # install aws cli
-    yum install -y https://centos7.iuscommunity.org/ius-release.rpm
-    yum update
-    yum install -y python-pip
+    yum install -y centos-release-scl
+    yum install -y rh-python36 python-pip
     pip install awscli
-    yum install centos-release-scl
-    yum install rh-python36
   SHELL
 end
