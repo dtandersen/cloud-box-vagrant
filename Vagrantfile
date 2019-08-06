@@ -6,14 +6,17 @@ Vagrant.configure(2) do |config|
   config.vm.box_version = "1902.01"
   config.vm.hostname = "cloud-box"
   config.vm.synced_folder ENV['USERPROFILE']  + "/Google Drive/vagrant-work", "/home/vagrant/work"
+  config.disksize.size = '80GB'
 
   config.ssh.forward_agent = true
+
+  config.vm.network "private_network", ip: "192.168.50.4", virtualbox__intnet: true
 
   config.vm.provider "virtualbox" do |vb|
     vb.gui = false
     vb.name = "Cloud Box"
-    vb.memory = 512
-    vb.cpus = 1
+    vb.memory = 4096
+    vb.cpus = 4
   end
 
   config.vm.provision "shell", env: {"TERRAFORM_VERSION" => "0.11.11"}, inline: <<-SHELL
@@ -35,7 +38,8 @@ Vagrant.configure(2) do |config|
     # install aws cli
     yum install -y python-pip
     pip install awscli
-    yum install centos-release-scl
-    yum install rh-python36
+    yum install -y centos-release-scl
+    #yum-config-manager --enable centos-sclo-rh-testing
+    yum install -y rh-python36
   SHELL
 end
