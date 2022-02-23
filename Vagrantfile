@@ -78,6 +78,7 @@ Vagrant.configure(2) do |config|
     kubectl completion bash > /etc/bash_completion.d/kubectl
     echo 'alias k=kubectl' >> /home/vagrant/.bashrc
     echo 'complete -F __start_kubectl k' >> /home/vagrant/.bashrc
+    kubectl apply --kubeconfig /home/vagrant/.kube/config -f "https://cloud.weave.works/k8s/net?k8s-version=$(kubectl version | base64 | tr -d '\n')"
     #yum install -y centos-release-scl
     #yum-config-manager --enable centos-sclo-rh-testing
     #yum install -y rh-python36
