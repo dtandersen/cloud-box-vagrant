@@ -13,6 +13,8 @@ It's as simple as `vagrant up`, but install the vbguest plugin before.
 
 ```
 vagrant plugin install vagrant-vbguest
+vagrant plugin install vagrant-disksize
+vagrant plugin install vagrant-multi-putty
 vagrant up
 ```
 
