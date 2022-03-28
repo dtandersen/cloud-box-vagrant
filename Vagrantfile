@@ -2,13 +2,12 @@
 # vi: set ft=ruby :
 # requires set VAGRANT_EXPERIMENTAL="disks"
 Vagrant.configure(2) do |config|
-  #config.vm.box = "centos/8"
   config.vm.box = "bento/centos-8"
-  #config.vm.box_version = "1902.01"
+  config.vm.box_version = "202112.19.0"
   config.vm.hostname = "cloud-box"
   config.vm.synced_folder ENV['USERPROFILE']  + "/Google Drive/vagrant-work", "/home/vagrant/work"
-  #config.disksize.size = '50GB'
-  config.vbguest.auto_update = true
+  config.vbguest.auto_update = false
+  #config.ssh.private_key_path = "~/.ssh/id_rsa"
   config.ssh.forward_agent = true
 
   config.vm.network "private_network", ip: "192.168.50.4", virtualbox__intnet: true
@@ -19,9 +18,20 @@ Vagrant.configure(2) do |config|
     vb.name = "Cloud Box"
     vb.memory = 4096
     vb.cpus = 4
+    #vb.customize ["setextradata", :id, "VBoxInternal2/SharedFoldersEnableSymlinksCreate/home_vagrant_work", "1"]
   end
 
-  config.vm.provision "shell", env: {"TERRAFORM_VERSION" => "1.1.0", "DOCKER_COMPOSE_VERSION" => "2.2.2"}, inline: <<-SHELL
+  id_rsa_key_pub = File.read(File.join(ENV['USERPROFILE'], "/Google Drive/vagrant-work", ".ssh", "id_rsa.pub"))
+
+  config.vm.provision "ssh", type: "shell", inline: <<-SHELL
+    mkdir -p /home/vagrant/.ssh
+    echo '#{id_rsa_key_pub}' >> /home/vagrant/.ssh/authorized_keys 
+    chmod 600 /home/vagrant/.ssh/authorized_keys
+  SHELL
+  
+  config.vm.provision "bootstrap", type: "shell", env: {"TERRAFORM_VERSION" => "1.1.7", "DOCKER_COMPOSE_VERSION" => "2.3.4"}, inline: <<-SHELL
+    dnf --disablerepo '*' --enablerepo=extras swap centos-linux-repos centos-stream-repos -y
+	#dnf distro-sync -y
     yum install -y epel-release wget unzip git curl nano
     ln -s /home/vagrant/work/.aws /home/vagrant/.aws
 
@@ -44,41 +54,45 @@ Vagrant.configure(2) do |config|
     pip3 install awscli
 
     cat <<EOF > /etc/docker/daemon.json
-    {
-    "exec-opts": ["native.cgroupdriver=systemd"]
-    }
-    EOF
+{
+"exec-opts": ["native.cgroupdriver=systemd"]
+}
+EOF
     systemctl restart docker
-
-    cat <<EOF > /etc/yum.repos.d/kubernetes.repo
-    [kubernetes]
-    name=Kubernetes
-    baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
-    enabled=1
-    gpgcheck=1
-    repo_gpgcheck=1
-    gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
-    EOF
-    yum install -y kubeadm==1.20.13-0
-    yum install -y kubectl-1.20.13-0
+  SHELL
+  
+  config.vm.provision "kubernetes", type: "shell", env: {"KUBE_VERSION" => "1.20.15"}, inline: <<-SHELL
+cat <<'EOF' | sudo tee /etc/yum.repos.d/kubernetes.repo
+[kubernetes]
+name=Kubernetes
+baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-$basearch
+enabled=1
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+exclude=kubelet kubeadm kubectl
+EOF
+    #yum list --show-duplicates --disableexcludes=kubernetes kubectl
+    yum install -y kubeadm-$KUBE_VERSION-0 kubectl-$KUBE_VERSION-0 kubelet-$KUBE_VERSION-0 --disableexcludes=kubernetes
     swapoff -a
     kubeadm init
     yum install -y iproute-tc
-    mkdir /home/vagrant/.kube
+    mkdir -p /home/vagrant/.kube
     cp /etc/kubernetes/admin.conf /home/vagrant/.kube/config
-    sudo chown -R vagrant ~/.kube
+    sudo chown -R vagrant /home/vagrant/.kube
     kubectl --kubeconfig /home/vagrant/.kube/config taint nodes $(hostname) node-role.kubernetes.io/master:NoSchedule-
     yum install -y bash-completion
 
-    cat <<EOF > /etc/profile.d/bash_completion.sh
-      # Use bash-completion, if available
-      [[ $PS1 && -f /usr/share/bash-completion/bash_completion ]] && \
-        . /usr/share/bash-completion/bash_completion
-    EOF
+    cat <<'EOF' > /etc/profile.d/bash_completion.sh
+# Use bash-completion, if available
+[[ $PS1 && -f /usr/share/bash-completion/bash_completion ]] && \
+  . /usr/share/bash-completion/bash_completion
+EOF
     kubectl completion bash > /etc/bash_completion.d/kubectl
     echo 'alias k=kubectl' >> /home/vagrant/.bashrc
     echo 'complete -F __start_kubectl k' >> /home/vagrant/.bashrc
     kubectl apply --kubeconfig /home/vagrant/.kube/config -f "https://cloud.weave.works/k8s/net?k8s-version=$(kubectl version | base64 | tr -d '\n')"
+    systemctl enable kubelet --now
     #yum install -y centos-release-scl
     #yum-config-manager --enable centos-sclo-rh-testing
     #yum install -y rh-python36
