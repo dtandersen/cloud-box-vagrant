@@ -15,6 +15,7 @@ It's as simple as `vagrant up`, but install the vbguest plugin before.
 vagrant plugin install vagrant-vbguest
 vagrant plugin install vagrant-disksize
 vagrant plugin install vagrant-multi-putty
+vagrant plugin install vagrant-env
 vagrant up
 ```
 
@@ -27,3 +28,9 @@ Put AWS credentials in `~/.aws/credentials`.
 # Google Drive
 
 This box maps `~/Google Drive/vagrant-work` on the host to `~/work` in the VM.
+
+```bash
+#.env
+GIT_NAME=
+GIT_EMAIL=
+```

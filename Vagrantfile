@@ -5,13 +5,14 @@ Vagrant.configure(2) do |config|
   config.vm.box = "bento/centos-8"
   config.vm.box_version = "202112.19.0"
   config.vm.hostname = "cloud-box"
-  config.vm.synced_folder ENV['USERPROFILE']  + "/Google Drive/vagrant-work", "/home/vagrant/work"
+  config.vm.synced_folder ENV['USERPROFILE']  + "/Google Drive/vagrant-work", "/home/vagrant/work", SharedFoldersEnableSymlinksCreate: true
   config.vbguest.auto_update = false
   #config.ssh.private_key_path = "~/.ssh/id_rsa"
   config.ssh.forward_agent = true
 
   config.vm.network "private_network", ip: "192.168.50.4", virtualbox__intnet: true
   config.vm.disk :disk, size: "50GB", primary: true
+  config.env.enable
 
   config.vm.provider "virtualbox" do |vb|
     vb.gui = false
@@ -29,10 +30,12 @@ Vagrant.configure(2) do |config|
     chmod 600 /home/vagrant/.ssh/authorized_keys
   SHELL
   
-  config.vm.provision "bootstrap", type: "shell", env: {"TERRAFORM_VERSION" => "1.1.7", "DOCKER_COMPOSE_VERSION" => "2.3.4"}, inline: <<-SHELL
+  config.vm.provision "bootstrap", type: "shell", env: {"TERRAFORM_VERSION" => "1.1.7", "DOCKER_COMPOSE_VERSION" => "2.3.4", "GIT_NAME" => ENV['GIT_NAME'], "GIT_EMAIL" => ENV['GIT_EMAIL']}, inline: <<-SHELL
     dnf --disablerepo '*' --enablerepo=extras swap centos-linux-repos centos-stream-repos -y
 	#dnf distro-sync -y
     yum install -y epel-release wget unzip git curl nano
+    git config --global user.name "$GIT_NAME"
+    git config --global user.email "$GIT_EMAIL"
     ln -s /home/vagrant/work/.aws /home/vagrant/.aws
 
     # install terraform
@@ -74,6 +77,7 @@ exclude=kubelet kubeadm kubectl
 EOF
     #yum list --show-duplicates --disableexcludes=kubernetes kubectl
     yum install -y kubeadm-$KUBE_VERSION-0 kubectl-$KUBE_VERSION-0 kubelet-$KUBE_VERSION-0 --disableexcludes=kubernetes
+    sudo sed -i '/ swap / s/^\(.*\)$/#\1/g' /etc/fstab
     swapoff -a
     kubeadm init
     yum install -y iproute-tc
